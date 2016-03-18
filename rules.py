@@ -13,9 +13,9 @@ import attiotuserclient as iot
 import credentials
 
 
-motionHallway = Sensor('56a3ac562fc25c0e68ae7c67')
-luxHallway = Sensor('56a516632fc25c0e68ae7cfc')
-lightHallway = Actuator('56d30ff1f7bdc10ca85342c3')
+motionHallway = Sensor('id')
+luxHallway = Sensor('id')
+lightHallway = Actuator('id')
 
 iot.connect(credentials.UserName, credentials.Pwd)                  #important: do before declaring the rules, otherwise the topics to monitor are not rendered correcly.
 
