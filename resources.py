@@ -36,6 +36,12 @@ def isEqObjects(left, right):
 def isEqObjectVal(left, right):
     return left.value == right
 
+def isGeObjects(left, right):
+    return left.value >= right.value
+
+def isGeObjectVal(left, right):
+    return left.value >= right
+
 def isGtObjects(left, right):
     return left.value > right.value
 
@@ -47,6 +53,31 @@ def isLtObjects(left, right):
 
 def isLtObjectVal(left, right):
     return left.value < right
+
+
+def addObjects(left, right):
+    return left.value + right.value
+
+def addObjectVal(left, right):
+    return left.value + right
+
+def divObjects(left, right):
+    return left.value / right.value
+
+def divObjectVal(left, right):
+    return left.value / right
+
+def mulObjects(left, right):
+    return left.value * right.value
+
+def mulObjectVal(left, right):
+    return left.value * right
+
+def subObjects(left, right):
+    return left.value - right.value
+
+def subObjectVal(left, right):
+    return left.value - right
 
 def andObjectCond(left, right):
     return left.value and right.condition(right.left, right.right)
@@ -74,6 +105,51 @@ class Asset(object):
         else:
             monitorList = set([self.id])
             isEq = isEqObjectVal
+        return Composition(monitorList, isEq, self, other)
+
+    def __ge__(self, other):
+        if isinstance(other, Asset):
+            monitorList = set([self.id, other.id])
+            isEq = isGeObjects
+        else:
+            monitorList = set([self.id])
+            isEq = isGeObjectVal
+        return Composition(monitorList, isEq, self, other)
+
+    def __add__(self, other):
+        if isinstance(other, Asset):
+            monitorList = set([self.id, other.id])
+            isEq = addObjects
+        else:
+            monitorList = set([self.id])
+            isEq = addObjectVal
+        return Composition(monitorList, isEq, self, other)
+
+    def __div__(self, other):
+        if isinstance(other, Asset):
+            monitorList = set([self.id, other.id])
+            isEq = divObjects
+        else:
+            monitorList = set([self.id])
+            isEq = divObjectVal
+        return Composition(monitorList, isEq, self, other)
+
+    def __mul__(self, other):
+        if isinstance(other, Asset):
+            monitorList = set([self.id, other.id])
+            isEq = mulObjects
+        else:
+            monitorList = set([self.id])
+            isEq = mulObjectVal
+        return Composition(monitorList, isEq, self, other)
+
+    def __sub__(self, other):
+        if isinstance(other, Asset):
+            monitorList = set([self.id, other.id])
+            isEq = subObjects
+        else:
+            monitorList = set([self.id])
+            isEq = subObjectVal
         return Composition(monitorList, isEq, self, other)
 
     def __gt__(self, other):
