@@ -5,5 +5,5 @@ __maintainer__ = "Jan Bogaerts"
 __email__ = "jb@allthingstalk.com"
 __status__ = "Prototype"  # "Development", or "Production"
 
-UserName = "KardCard"
-Pwd = "Funkmaster1"
+UserName = ""
+Pwd = ""
