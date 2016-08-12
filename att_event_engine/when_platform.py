@@ -33,8 +33,9 @@ class MonitorObj(iot.SubscriberData):
         """callback for the processor part: check if the value of an actuator has changed, if so, update the group's value"""
         #global trigger
         if isinstance(value, dict) and "Id" in value:                                       # could come from the timer routine
-            resources.valueStore[value['Id']] = value['Value']
-            resources.trigger = resources.Asset(value['Id'])
+            id = value['Id']
+            resources.valueStore[id] = value['Value']
+            resources.trigger = resources.Asset(id)
         else:
             resources.trigger = None
         for callback in self.callbacks:
@@ -50,6 +51,7 @@ class MonitorObj(iot.SubscriberData):
                     callback.callback()                                       #it's an 'on every change'
             except:
                 logger.exception("'when' callback failed")
+        resources.valueStore = {}                                           # reset the value store for the next run, don't buffer values, they can have changed by the next run.
 
 
 def registerMonitor(assets, condition, callback):

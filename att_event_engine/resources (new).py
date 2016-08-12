@@ -82,6 +82,19 @@ class IOTObject(object):
         return self._name
 
 
+class _AssetSelector:
+    """a helper class for the Device.assets property, to dynamically generate asset objects and restrict to only getting values.
+    This technique saves on the nr of data base calls that have to be made."""
+
+    def __init__(self, device):
+        self.device = device
+
+    def __getitem__(self, key):
+        return Asset(device=self.device, name=key)
+
+    def __setitem__(self, key, value):
+        raise Exception("assigning assets not yet supported")
+
 class Device(IOTObject):
     """wraps a device object"""
 
@@ -124,9 +137,8 @@ class Device(IOTObject):
 
     @property
     def assets(self):
-        if not self._assets:
-            definition = self._getDefinition()
-            self._assets = {str(x['name']): Actuator(definition=x) if str(x['is']) == 'sensor' else Actuator(definition=x) for x in definition['assets']}
+        if not hasattr(self, '_assets'):
+            self._assets = _AssetSelector(self)
         return self._assets
 
 
@@ -263,6 +275,18 @@ class Asset(IOTObject):
         else:
             return self._device
 
+    @property
+    def control(self):
+        """get the control attached to this asset"""
+        definition = self._getDefinition()
+        return definition['control']
+
+    def profile(self):
+        """get the profile definition of the asset"""
+        definition = self._getDefinition()
+        return definition['profile']
+
+
 class Sensor(Asset):
     """renaming of the asset class, for mapping with cloud objects"""
 
@@ -277,6 +301,7 @@ class Actuator(Asset):
         else:
             iot.send(self.id, value)
         valueStore[self.id] = value
+
 
 
 class Parameter(object):
@@ -333,5 +358,7 @@ class Parameter(object):
                 return Device(name=self._referenced, gateway=self.gateway)
         elif self.datatype == 'gateway':
             return Gateway(id=self._referenced)
+        elif self.datatype in ['number', 'integer', 'string', 'boolean', 'object', 'list']:       # basic data types
+            return self._referenced
         else:
             raise Exception("not supported")
