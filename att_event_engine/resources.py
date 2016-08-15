@@ -272,8 +272,11 @@ class Actuator(Asset):
 
     def _setValue(self, value):
         """send the value to the actuator"""
-        if self._gateway or self._device:
-            iot.send(self.name, value, gateway=self._gateway, device=self._device)
+        gatewayId = self._getGatewayId()
+        if gatewayId:
+            iot.send(self.name, value, gateway=gatewayId, device=self._getDeviceName())
+        elif self._device:
+            iot.send(self.name, value, device=self._getDeviceId())
         else:
             iot.send(self.id, value)
         valueStore[self.id] = value
