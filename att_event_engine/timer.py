@@ -90,3 +90,11 @@ class Timer(object):
         else:
             return "timer_{0}".format(self.name)
 
+
+    @staticmethod
+    def current():
+        """
+        get the timer that triggered the current activity
+        :return:
+        """
+        return resources.trigger

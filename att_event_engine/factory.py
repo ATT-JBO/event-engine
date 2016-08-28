@@ -21,10 +21,10 @@ class Asset(object):
     def getTopics(self):
         """build the topic"""
         if self._ids:
-            if isinstance(self._id, basestring):
+            if isinstance(self._ids, basestring):
                 return [{'asset': self._id}]
             else:
-                return [{'asset': x} for x in self._id]
+                return [{'asset': x if isinstance(x, basestring) else x.id} for x in self._ids]
         elif self.style:
             "get all assets with specified style"
             # todo: query all or specified devices/gateways for assets that match the style +

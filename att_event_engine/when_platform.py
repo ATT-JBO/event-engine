@@ -36,6 +36,8 @@ class MonitorObj(iot.SubscriberData):
             id = value['Id']
             resources.valueStore[id] = value['Value']
             resources.trigger = resources.Asset(id)
+        elif hasattr(self, 'timer'):
+            resources.trigger = self.timer                  # timer is supplied by the register routine, so we have an object to work with.
         else:
             resources.trigger = None
         for callback in self.callbacks:
@@ -69,6 +71,7 @@ def registerMonitor(assets, condition, callback):
             monitor.direction = 'in'
             if isinstance(asset, Timer):
                 monitor.level = 'timer'
+                monitor.timer = asset               # keep a refernce to the timer inside the callback, so we know which one went off.
             topicStr = monitor.getTopic()
             if topicStr in resources._toMonitor:
                 resources._toMonitor[topicStr].callbacks.append(callbackObj)  # we add the callback as a tupple with the condition, saves us a class decleration.

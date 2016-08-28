@@ -380,6 +380,37 @@ def getAsset(id=None, gateway=None, device=None, name=None):
         raise Exception("either assetId, (deviceId and asset name) or (gatewayid, deviceName and name) have to be specified")
     return doHTTPRequest(url, "")
 
+
+def createAsset(device, name, description, assetIs, assetType, style="Undefined"):
+    '''Create or update the specified asset. Call this function after calling 'connect' for each asset that you want to use.
+    :param name: the local id of the asset
+    :type name: string or number
+    :param label: the label that should be used to show on the website
+    :type label: basestring
+    :param description: a description of the asset
+    :type description: basestring
+    :param assetIs: actuator, sensor, virtual, config
+    :type assetIs: string
+    :param assetType: the type of the asset, possible values: 'integer', 'number', 'boolean', 'text', None (defaults to string, when the asset already exists, the website will not overwrite any changes done manually on the site). Can also be a complete profile definition as a json string (see http://docs.smartliving.io/smartliving-maker/profiles/) example: '{"type": "integer", "minimum": 0}'.
+    :type assetType: string
+    :param style: possible values: 'Primary', 'Secondary', 'Config', 'Battery'
+    :type style: basestring
+    '''
+
+    if not device:
+        raise Exception("device not specified")
+    body = {'name': name, "description": description, "style": style, "is": assetIs}
+    if assetType:
+        if isinstance(assetType, dict):
+            body["profile"] = assetType
+        else:
+            body["profile"] = {"type": assetType}
+    url = "/device/" + device + "/asset/" + str(id)
+
+    return doHTTPRequest(url, json.dumps(body), 'PUT')
+
+
+
 def getAssetState(id):
     """get the details for the specified asset"""
     url = "/asset/" + id + '/state'

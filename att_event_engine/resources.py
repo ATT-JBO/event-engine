@@ -225,6 +225,13 @@ class Asset(IOTObject):
             else:
                 return [{'asset': self._name, 'device': self._getDeviceId()}]
 
+    @staticmethod
+    def current():
+        """
+        get the Asset that triggered the current activity
+        :return:
+        """
+        return trigger
 
     @property
     def value(self):
@@ -263,8 +270,26 @@ class Asset(IOTObject):
         else:
             return self._device
 
+    @property
+    def profile(self):
+        definition = self._getDefinition()
+        if definition:
+            return str(definition['profile'])
+        return None
+
 class Sensor(Asset):
     """renaming of the asset class, for mapping with cloud objects"""
+
+    @staticmethod
+    def create(name, device, description="", profile="string", style="Undefined"):
+        if isinstance(device, basestring):
+            dev = device
+        else:
+            dev = device.id
+
+        definition = iot.createAsset(dev, name, description, "sensor", profile, style)
+        res = Actuator(id=definition['id'], device=device, definition=definition)
+        return res
 
 
 class Actuator(Asset):
@@ -280,6 +305,17 @@ class Actuator(Asset):
         else:
             iot.send(self.id, value)
         valueStore[self.id] = value
+
+    @staticmethod
+    def create(name, device, description="", profile="string", style="Undefined"):
+        if isinstance(device, basestring):
+            dev = device
+        else:
+            dev = device.id
+
+        definition = iot.createAsset(dev, name, description, "actuator", profile, style)
+        res = Actuator(id=definition['id'], device=device, definition=definition)
+        return res
 
 
 class Parameter(object):
