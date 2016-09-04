@@ -33,6 +33,7 @@ _defaultDivider = '/'
 _defaultWildCard = '+'
 _defaultMultiWildCard = '#'
 
+
 class SubscriberData(object):
     """
     id: dictionary of fields: gateway, device, asset  -> name or id
@@ -399,13 +400,14 @@ def createAsset(device, name, description, assetIs, assetType, style="Undefined"
 
     if not device:
         raise Exception("device not specified")
-    body = {'name': name, "description": description, "style": style, "is": assetIs}
+    name = str(name)
+    body = {'title': name, "description": description, "style": style, "is": assetIs, "deviceId": device}
     if assetType:
         if isinstance(assetType, dict):
             body["profile"] = assetType
         else:
-            body["profile"] = {"type": assetType}
-    url = "/device/" + device + "/asset/" + str(id)
+            body["profile"] = {"type": str(assetType)}
+    url = "/device/" + device + "/asset/" + name
 
     return doHTTPRequest(url, json.dumps(body), 'PUT')
 

@@ -10,21 +10,26 @@ import resources
 class Asset(object):
     """"""
 
-    def __init__(self, id=None, name=None, device=None, gateway=None, style=None):
+    def __init__(self, connection, id=None, name=None, device=None, gateway=None, style=None):
         self._ids = id
         self.name = name
         self.device = device
         self.gateway = gateway
         self.style = style
         self._id_pos = 0
+        self._connection = connection
 
     def getTopics(self):
         """build the topic"""
         if self._ids:
             if isinstance(self._ids, basestring):
-                return [{'asset': self._id}]
-            else:
+                return [{'asset': self._ids}]
+            elif isinstance((self._ids, Asset)):
+                return [{'asset': self._ids.id}]
+            elif isinstance((self._ids, list)):
                 return [{'asset': x if isinstance(x, basestring) else x.id} for x in self._ids]
+            else:
+                raise Exception("unsupported data format")
         elif self.style:
             "get all assets with specified style"
             # todo: query all or specified devices/gateways for assets that match the style +
@@ -126,6 +131,10 @@ class Asset(object):
         if resources.trigger and self._isValid(resources.trigger):
             return resources.trigger
         return None
+
+    @property
+    def connection(self):
+        return self._connection
 
 class Sensor(Asset):
     """genrates the list of assets, if required"""

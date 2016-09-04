@@ -9,14 +9,15 @@ __status__ = "Prototype"  # "Development", or "Production"
 import errno
 import httplib
 from socket import error as SocketError
-import attiotuserclient as iot
 import resources
 import json
+
+import att
 
 class Timer(object):
     """provides access to a global cloud based timer iot-service"""
 
-    def __init__(self, context, name):
+    def __init__(self, context, name, connection=None):
         """
         Create a new timer object
         :param runAt: initial time out to run the timer at, when it is first created/setup
@@ -25,13 +26,23 @@ class Timer(object):
         """
         self.context = context
         self.name = name
+        if connection:
+            self.connection = connection
+        else:
+            self.connection = resources.defaultconnection
 
-    def getTopics(self, divider=iot._defaultDivider, wildcard=iot._defaultWildCard):
+    def getTopics(self, divider=None, wildcard=None):
+        """
+        get the topics that should  the broker should monitor for this object
+        :param divider: the divider to use in the topic, None to use the default of the current self.context (att.Client)
+        :param wildcard: same as divider bur for wildcards.
+        :return:
+        """
         if not self.context:
             return [{'name': self.name}]
         else:
             contextTopics = self.context.getTopics()
-            monitor = iot.SubscriberData()
+            monitor = att.SubscriberData(self.context.connection)
             monitor.direction = 'in'
             if not isinstance(self.context, resources.Asset):           # if it's not an asset, but a device or gateway, assign to correct level to the topic builder
                 monitor.level = type(self.context).__name__.lower()
@@ -44,7 +55,7 @@ class Timer(object):
     def getTopicStr(self):
         """renders 1 or more topic strings for the current object. Always returns a list"""
         result = []
-        monitor = iot.SubscriberData()
+        monitor = att.SubscriberData(self.context.context)
         monitor.level = 'timer'
         for topic in self.getTopics(divider='.', wildcard='*'):
             monitor.id = topic

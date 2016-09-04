@@ -5,7 +5,7 @@ __maintainer__ = "Jan Bogaerts"
 __email__ = "jb@allthingstalk.com"
 __status__ = "Prototype"  # "Development", or "Production"
 
-import attiotuserclient as iot
+import att
 
 valueStore = {}
 
@@ -21,12 +21,26 @@ When the module is loaded, this dict is first filled with the parameter values, 
 find it's value as soon as possible. Otherwise, it can't supply the required object when other parts of the rules are loaded
 """
 
+defaultconnection = None
+"""
+The default att.HttClient object to use as connection for the IOTObjects, when they are created without connection.
+"""
+
 class IOTObject(object):
-    def __init__(self):
+    def __init__(self, connection=None):
+        """
+        create the object
+        :type connection: att.HttpClient
+        :param connection: the att connection to use.
+        """
         self._definition = None
         self._id = None
         self._name = None
         self._gateway = None
+        if connection:
+            self.connection = connection
+        else:
+            self.connection = defaultconnection
 
     def _getDefinition(self):
         """inheriters have to re-implement this function."""
@@ -85,8 +99,8 @@ class IOTObject(object):
 class Device(IOTObject):
     """wraps a device object"""
 
-    def __init__(self, id=None, name=None,  gateway=None, style=None):
-        super(Device, self).__init__()
+    def __init__(self, id=None, name=None,  gateway=None, style=None, connection=None):
+        super(Device, self).__init__(connection)
         if id:
             self._id = id
         elif gateway and name:
@@ -108,9 +122,9 @@ class Device(IOTObject):
         """load the json def for this object"""
         if not self._definition:
             if self._id:
-                self._definition = iot.getDevice(self._id)
+                self._definition = self.connection.getDevice(self._id)
             else:
-                self._definition = iot.getDevice(gatewayId=self._getGatewayId(), deviceName=self.name)
+                self._definition = self.connection.getDevice(gatewayId=self._getGatewayId(), deviceName=self.name)
         return self._definition
 
     def getTopics(self):
@@ -134,8 +148,8 @@ class Gateway(IOTObject):
     """wraps a gateway
     """
 
-    def __init__(self, id):
-        super(Gateway, self).__init__()
+    def __init__(self, id, connection=None):
+        super(Gateway, self).__init__(connection)
         if id:
             self._id = id
         self._definition = None
@@ -143,12 +157,12 @@ class Gateway(IOTObject):
     def _getDefinition(self):
         """load the json def for this object"""
         if not self._definition:
-            self._definition = iot.getGateway(self._id)
+            self._definition = self.connection.getGateway(self._id)
         return self._definition
 
 class Asset(IOTObject):
-    def __init__(self, id=None, gateway=None, device=None, name=None, definition=None):
-        super(Asset, self).__init__()
+    def __init__(self, id=None, gateway=None, device=None, name=None, definition=None, connection=None):
+        super(Asset, self).__init__(connection)
         if id:
             self._id = id
             self._gateway = None
@@ -200,13 +214,13 @@ class Asset(IOTObject):
         """the json object retrieved from the cloud."""
         if not self._definition:
             if self._id:
-                self._definition = iot.getAsset(self._id)
+                self._definition = self.connection.getAsset(self._id)
             elif self._gateway or (self._device and hasattr(self._device, '_gateway') and self._device._gateway):
-                self._definition = iot.getAsset(gateway=self._getGatewayId(), device=self._getDeviceName(), name=self._name)
+                self._definition = self.connection.getAsset(gateway=self._getGatewayId(), device=self._getDeviceName(), name=self._name)
                 if self._definition:
                     self._id = self._definition['id']
             else:
-                self._definition = iot.getAsset(device=self._getDeviceId(), name=self._name)
+                self._definition = self.connection.getAsset(device=self._getDeviceId(), name=self._name)
                 if self._definition:
                     self._id = self._definition['id']
             #don't copy over the state from the definition, this appears to be cached on the server and might not contain the lasxt value.
@@ -239,7 +253,7 @@ class Asset(IOTObject):
         if not self._id:                    # we need the id to access the valuestore. We can get the id from the definition if need be.
             self._getDefinition()
         if not self._id in valueStore:
-            val = iot.getAssetState(self.id)
+            val = self.connection.getAssetState(self.id)
             if val:
                 result = val['value']
             else:
@@ -271,24 +285,32 @@ class Asset(IOTObject):
             return self._device
 
     @property
+    def control(self):
+        """get the control attached to this asset"""
+        definition = self._getDefinition()
+        if definition:
+            return definition['control']
+            return None
+
+    @property
     def profile(self):
         definition = self._getDefinition()
         if definition:
-            return str(definition['profile'])
+            return definition['profile']
         return None
 
 class Sensor(Asset):
     """renaming of the asset class, for mapping with cloud objects"""
 
     @staticmethod
-    def create(name, device, description="", profile="string", style="Undefined"):
+    def create(connection, name, device, description="", profile="string", style="Undefined"):
         if isinstance(device, basestring):
             dev = device
         else:
             dev = device.id
 
-        definition = iot.createAsset(dev, name, description, "sensor", profile, style)
-        res = Actuator(id=definition['id'], device=device, definition=definition)
+        definition = connection.createAsset(dev, name, description, "sensor", profile, style)
+        res = Sensor(contxt=connection, id=definition['id'], device=device, definition=definition)
         return res
 
 
@@ -297,24 +319,42 @@ class Actuator(Asset):
 
     def _setValue(self, value):
         """send the value to the actuator"""
-        gatewayId = self._getGatewayId()
-        if gatewayId:
-            iot.send(self.name, value, gateway=gatewayId, device=self._getDeviceName())
-        elif self._device:
-            iot.send(self.name, value, device=self._getDeviceId())
-        else:
-            iot.send(self.id, value)
+        #gatewayId = self._getGatewayId()
+        #if gatewayId:
+        #    self.connection.send_command(self.name, value, gateway=gatewayId, device=self._getDeviceName())
+        #elif self._device:
+        #    self.connection.send_command(self.name, value, device=self._getDeviceId())
+        #else:
+        #    self.connection.send_command(self.id, value)
+
+        #todo: re-enable sending command from name
+        self.connection.send_command(self.id, value)
         valueStore[self.id] = value
 
     @staticmethod
-    def create(name, device, description="", profile="string", style="Undefined"):
+    def create(connection, name, device, description="", profile="string", style="Undefined"):
         if isinstance(device, basestring):
             dev = device
         else:
             dev = device.id
 
-        definition = iot.createAsset(dev, name, description, "actuator", profile, style)
-        res = Actuator(id=definition['id'], device=device, definition=definition)
+        definition = connection.createAsset(dev, name, description, "actuator", profile, style)
+        res = Actuator(id=definition['id'], device=device, definition=definition,connection=connection)
+        return res
+
+
+class Virtual(Actuator):
+    """an asset that adds write-value functionality to the object"""
+
+    @staticmethod
+    def create(connection, name, device, description="", profile="string", style="Undefined"):
+        if isinstance(device, basestring):
+            dev = device
+        else:
+            dev = device.id
+
+        definition = connection.createAsset(dev, name, description, "virtual", profile, style)
+        res = Actuator(id=definition['id'], device=device, definition=definition,connection=connection)
         return res
 
 
@@ -345,6 +385,7 @@ class Parameter(object):
         self.datatype = datatype
         self.gateway = gateway                              # references to objects that this object should be relative towards.
         self.device = device
+        self.connection = None                                 # to be filled in when connection changes
         if name in parameters:
             self._referenced = parameters[name]
         parameters[name] = self                                 # so that the app can find all the parameters for this rule set and ask the user to supply the values.
@@ -358,19 +399,52 @@ class Parameter(object):
         '''returns an object representing the value for the parameter'''
         if self.datatype == 'asset':
             if not self.gateway and not self.device:
-                return Asset(id=self._referenced)
+                return Asset(connection=self.connection, id=self._referenced)
             elif self.gateway:
-                return Asset(name=self._referenced, device=self.device, gateway=self.gateway)
+                return Asset(connection=self.connection, name=self._referenced, device=self.device, gateway=self.gateway)
         elif self.datatype == 'sensor':
-            return Sensor(id=self._referenced)
+            return Sensor(connection=self.connection, id=self._referenced)
         elif self.datatype == 'actuator':
-            return Actuator(id=self._referenced)
+            return Actuator(connection=self.connection, id=self._referenced)
         elif self.datatype == 'device':
             if not self.gateway:
-                return Device(id=self._referenced)
+                return Device(connection=self.connection, id=self._referenced)
             else:
-                return Device(name=self._referenced, gateway=self.gateway)
+                return Device(connection=self.connection, name=self._referenced, gateway=self.gateway)
         elif self.datatype == 'gateway':
-            return Gateway(id=self._referenced)
+            return Gateway(id=self._referenced, connection=self.connection)
+        elif self.datatype in ['number', 'integer', 'string', 'boolean', 'object', 'list']:  # basic data types
+            return self._referenced
         else:
             raise Exception("not supported")
+
+
+def buildFromTopic(path):
+    """
+    builds an object based on the specified topic path.
+    :param path:
+    :return:
+    """
+    if path[3] == "asset":
+        return Asset(path[4])
+    elif path[3] == 'device':
+        devId = path[4]
+        if len(path) > 5 and path[5] == 'asset':
+            return Asset(device=devId, name=path[6])
+        else:
+            return Device(devId)
+    elif path[3] == 'gateway':
+        gateway = path[4]
+        if len(path) > 5:
+            if path[5] == 'device':
+                devId = path[6]
+                if len(path) > 7 and path[7] == 'asset':
+                    return Asset(gateway=gateway, device=devId, name=path[8])
+                else:
+                    return Device(gateway=gateway, name=devId)
+            elif path[5] == 'asset':
+                return Asset(gateway=gateway, name=path[6])
+            else:
+                raise Exception("unexpected value in path")
+        else:
+            return Gateway(gateway)

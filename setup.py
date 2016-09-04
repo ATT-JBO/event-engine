@@ -3,7 +3,7 @@ from distutils.core import setup
 
 setup(
     name='att_event_engine',
-    version='0.7.28',
+    version='0.8.0',
     packages=['att_event_engine'],
     install_requires='paho-mqtt',
     url='',

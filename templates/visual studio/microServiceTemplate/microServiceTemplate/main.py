@@ -8,12 +8,14 @@ __status__ = "Prototype"  # "Development", or "Production"
 import logging
 logging.getLogger().setLevel(logging.INFO)
 
-import att_event_engine.attiotuserclient as iot
+import att_event_engine.att as att
 import credentials
 import att_event_engine.resources as resources
 import sys
 
+iot = att.Client()
 iot.connect(credentials.UserName, credentials.Pwd, True, credentials.Api, credentials.Broker)                  #important: do before declaring the rules, otherwise the topics to monitor are not rendered correcly.
+resources.defaultContext = iot
 
 for arg in sys.argv[1:]:
     parts = arg.split('=')

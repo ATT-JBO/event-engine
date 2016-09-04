@@ -21,3 +21,13 @@ def When(toMonitor, condition = None):
         whenCore.registerMonitor(toMonitor, condition, func)
         return func                                         # the original function remains unchanged, we just needed to have a pointer to the function and build the conditions.
     return when_decorator
+
+
+def appendToMonitorList(func, toMonitor):
+    """
+    Adds an element to the list of items that are being monitored for the specified function.
+    :param func: A function that has previously been decorated with a 'When' clause.
+    :param toMonitor: a resource to monitor (asset, device, gateway, timer)
+    :return: None
+    """
+    whenCore.appendToMonitorList(func, toMonitor)

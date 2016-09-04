@@ -281,6 +281,7 @@ class Asset(IOTObject):
         definition = self._getDefinition()
         return definition['control']
 
+    @property
     def profile(self):
         """get the profile definition of the asset"""
         definition = self._getDefinition()
