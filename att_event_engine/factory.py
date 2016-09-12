@@ -10,14 +10,17 @@ import resources
 class Asset(object):
     """"""
 
-    def __init__(self, connection, id=None, name=None, device=None, gateway=None, style=None):
+    def __init__(self, connection=None, id=None, name=None, device=None, gateway=None, style=None):
         self._ids = id
         self.name = name
         self.device = device
         self.gateway = gateway
         self.style = style
         self._id_pos = 0
-        self._connection = connection
+        if connection:
+            self._connection = connection
+        else:
+            self._connection = resources.defaultconnection
 
     def getTopics(self):
         """build the topic"""

@@ -5,6 +5,7 @@ __maintainer__ = "Jan Bogaerts"
 __email__ = "jb@allthingstalk.com"
 __status__ = "Prototype"  # "Development", or "Production"
 
+import datetime
 import att
 
 valueStore = {}
@@ -254,19 +255,31 @@ class Asset(IOTObject):
             self._getDefinition()
         if not self._id in valueStore:
             val = self.connection.getAssetState(self.id)
-            if val:
-                result = val['value']
-            else:
-                result = None
-            valueStore[self._id] = result
+            valueStore[self._id] = val
         else:
-            result = valueStore[self._id]
-        return result
+            val = valueStore[self._id]
+        return val['value'] if val else None
 
 
     @value.setter
     def value(self, value):
         self._setValue(value)
+
+
+    @property
+    def value_at(self):
+        """
+        get the datetime when the last value was recorded.
+        :return: datetime object or None.
+        """
+        if not self._id:  # we need the id to access the valuestore. We can get the id from the definition if need be.
+            self._getDefinition()
+        if not self._id in valueStore:
+            val = self.connection.getAssetState(self.id)
+            valueStore[self._id] = val
+        else:
+            val = valueStore[self._id]
+        return val['at'] if val else None
 
     def _setValue(self, value):
         raise Exception("write value only supported on actuators")
@@ -303,13 +316,13 @@ class Sensor(Asset):
     """renaming of the asset class, for mapping with cloud objects"""
 
     @staticmethod
-    def create(connection, name, device, description="", profile="string", style="Undefined"):
+    def create(connection, device, name, label, description="", profile="string", style="Undefined"):
         if isinstance(device, basestring):
             dev = device
         else:
             dev = device.id
 
-        definition = connection.createAsset(dev, name, description, "sensor", profile, style)
+        definition = connection.createAsset(dev, name, label, description, "sensor", profile, style)
         res = Sensor(contxt=connection, id=definition['id'], device=device, definition=definition)
         return res
 
@@ -329,16 +342,16 @@ class Actuator(Asset):
 
         #todo: re-enable sending command from name
         self.connection.send_command(self.id, value)
-        valueStore[self.id] = value
+        valueStore[self.id] = {'value': value, 'at': datetime.datetime.now()}
 
     @staticmethod
-    def create(connection, name, device, description="", profile="string", style="Undefined"):
+    def create(connection, device, name, label, description="", profile="string", style="Undefined"):
         if isinstance(device, basestring):
             dev = device
         else:
             dev = device.id
 
-        definition = connection.createAsset(dev, name, description, "actuator", profile, style)
+        definition = connection.createAsset(dev, name, label, description, "actuator", profile, style)
         res = Actuator(id=definition['id'], device=device, definition=definition,connection=connection)
         return res
 
@@ -347,13 +360,13 @@ class Virtual(Actuator):
     """an asset that adds write-value functionality to the object"""
 
     @staticmethod
-    def create(connection, name, device, description="", profile="string", style="Undefined"):
+    def create(connection, device, name, label, description="", profile="string", style="Undefined"):
         if isinstance(device, basestring):
             dev = device
         else:
             dev = device.id
 
-        definition = connection.createAsset(dev, name, description, "virtual", profile, style)
+        definition = connection.createAsset(dev, name, label, description, "virtual", profile, style)
         res = Actuator(id=definition['id'], device=device, definition=definition,connection=connection)
         return res
 

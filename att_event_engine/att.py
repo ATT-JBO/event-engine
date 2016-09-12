@@ -113,8 +113,10 @@ class HttpClient(object):
                 "either assetId, (deviceId and asset name) or (gatewayid, deviceName and name) have to be specified")
         return self.doHTTPRequest(url, "")
 
-    def createAsset(self, device, name, description, assetIs, assetType, style="Undefined"):
+    def createAsset(self, device, name, label, description, assetIs, assetType, style="Undefined"):
         '''Create or update the specified asset. Call this function after calling 'connect' for each asset that you want to use.
+        :param device:
+        :return:
         :param name: the local id of the asset
         :type name: string or number
         :param label: the label that should be used to show on the website
@@ -132,7 +134,7 @@ class HttpClient(object):
         if not device:
             raise Exception("device not specified")
         name = str(name)
-        body = {'title': name, "description": description, "style": style, "is": assetIs, "deviceId": device}
+        body = {'title': label, "description": description, "style": style, "is": assetIs, "deviceId": device}
         if assetType:
             if isinstance(assetType, dict):
                 body["profile"] = assetType
@@ -257,7 +259,7 @@ class HttpClient(object):
                             return json.loads(jsonStr)
                         else:
                             return  # get out of the ethernal loop
-                    elif not response.status == 200:
+                    else:
                         self._processError(jsonStr)
                 except httplib.BadStatusLine:  # a bad status line is probably due to the connection being closed. If it persists, raise the exception.
                     badStatusLineCount += 1
@@ -526,7 +528,9 @@ class Client(HttpClient):
                 topicParts = msg.topic.split('/')
                 logging.info(str(topicParts))
                 if topicParts[2] == 'in':  # data from cloud to client is always json, from device to cloud is not garanteed to be json.
-                    value = json.loads(msg.payload)
+                    #todo: remove temp fix for inconsistent data transmission (right now, not all data arrives with the same capitalization)
+                    payload = msg.payload.replace('"At"', '"at"').replace('"Value"', '"value"')
+                    value = json.loads(payload)
                 else:
                     value = msg.payload
                 defs = userdata._callbacks[msg.topic]

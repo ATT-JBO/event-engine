@@ -34,7 +34,7 @@ class MonitorObj(att.SubscriberData):
         #global trigger
         if isinstance(value, dict) and "Id" in value:                                       # could come from the timer routine, so first check if it's an asset state change (value is json dict with 'id' in there)
             id = value['Id']
-            resources.valueStore[id] = value['Value']
+            resources.valueStore[id] = value
             resources.trigger = resources.Asset(id, self.connection)
         elif hasattr(self, 'timer'):
             resources.trigger = self.timer                  # timer is supplied by the register routine, so we have an object to work with.
