@@ -258,7 +258,7 @@ class Asset(IOTObject):
             valueStore[self._id] = val
         else:
             val = valueStore[self._id]
-        return val['value'] if val else None
+        return val['Value'] if val else None
 
 
     @value.setter

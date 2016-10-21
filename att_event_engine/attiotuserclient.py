@@ -326,7 +326,7 @@ def login(username, pwd):
     body = "grant_type=password&username=" + username + "&password=" + pwd + "&client_id=maker"
     logging.info("HTTP POST: " + url)
     logging.info("HTTP BODY: " + body)
-    _httpClient.request("POST", url, body, {"Content-type": "application/json"})
+    _httpClient.request("POST", url, body, {"Content-type": "application/json", "Connection:": "Keep-alive"})
     response = _httpClient.getresponse()
     logging.info(str((response.status, response.reason)))
     jsonStr =  response.read()
@@ -353,7 +353,7 @@ def refreshToken():
     body = "grant_type=refresh_token&refresh_token=" + _refresh_token + "&client_id=dashboard"
     logging.info("HTTP POST: " + url)
     logging.info("HTTP BODY: " + body)
-    _httpClient.request("POST", url, body, {"Content-type": "application/json"})
+    _httpClient.request("POST", url, body, {"Content-type": "application/json", "Connection:" : "Keep-alive"})
     response = _httpClient.getresponse()
     logging.info(str((response.status, response.reason)))
     jsonStr =  response.read()
@@ -495,7 +495,7 @@ def doHTTPRequest(url, content, method = "GET"):
             try:
                 if _expires_in < time.time():               #need to refesh the token first
                     refreshToken()
-                headers = {"Content-type": "application/json", "Authorization": "Bearer " + _access_token}
+                headers = {"Content-type": "application/json", "Authorization": "Bearer " + _access_token, "Connection:" : "Keep-alive"}
                 logging.info("HTTP " + method + ': ' + url)
                 logging.info("HTTP HEADER: " + str(headers))
                 logging.info("HTTP BODY: " + content)

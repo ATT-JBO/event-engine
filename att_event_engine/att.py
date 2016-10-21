@@ -55,7 +55,7 @@ class HttpClient(object):
         body = "grant_type=password&username=" + username + "&password=" + pwd + "&client_id=maker"
         logging.info("HTTP POST: " + url)
         logging.info("HTTP BODY: " + body)
-        self._httpClient.request("POST", url, body, {"Content-type": "application/json"})
+        self._httpClient.request("POST", url, body, {"Content-type": "application/json", "Connection" : "Keep-alive"})
         response = self._httpClient.getresponse()
         logging.info(str((response.status, response.reason)))
         jsonStr = response.read()
@@ -84,7 +84,7 @@ class HttpClient(object):
         body = "grant_type=refresh_token&refresh_token=" + self._refresh_token + "&client_id=dashboard"
         logging.info("HTTP POST: " + url)
         logging.info("HTTP BODY: " + body)
-        self._httpClient.request("POST", url, body, {"Content-type": "application/json"})
+        self._httpClient.request("POST", url, body, {"Content-type": "application/json", "Connection" : "Keep-alive"})
         response = self._httpClient.getresponse()
         logging.info(str((response.status, response.reason)))
         jsonStr = response.read()
@@ -245,7 +245,7 @@ class HttpClient(object):
                 try:
                     if self._expires_in < time.time():  # need to refesh the token first
                         self._refreshToken()
-                    headers = {"Content-type": "application/json", "Authorization": "Bearer " + self._access_token}
+                    headers = {"Content-type": "application/json", "Authorization": "Bearer " + self._access_token, "Connection" : "Keep-alive"}
                     logging.info("HTTP " + method + ': ' + url)
                     logging.info("HTTP HEADER: " + str(headers))
                     logging.info("HTTP BODY: " + content)
