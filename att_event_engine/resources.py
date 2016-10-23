@@ -187,6 +187,14 @@ class Asset(IOTObject):
         else:
             raise LookupError("either id or device and name have to be specified")
 
+    def updateState(self, value):
+        """
+        sends the value to the cloud in order to update the current state of the asset.
+        :param value: the new value
+        :return: None
+        """
+        self.connection.send_state(self.id, value)
+
     def _getGatewayId(self):
         if self._gateway:
             if isinstance(self._gateway, basestring):
@@ -343,6 +351,40 @@ class Actuator(Asset):
         #todo: re-enable sending command from name
         self.connection.send_command(self.id, value)
         valueStore[self.id] = {'value': value, 'at': datetime.datetime.now()}
+
+    @property
+    def on_actuate(self):
+        """
+        the callback for when this actuator receives a command.
+        :return: None or the callback function that has previously been assigned to this object.
+        """
+        if hasattr(self, "_on_actuate"):
+            return self._on_actuate
+        return None
+
+    @on_actuate.setter
+    def set_on_actuate(self, value):
+        """
+        assigns a callback for receving commands sent to this actuator object.
+        :param value: a function to call. It's signagure should be def xx(actuator, value) -> can be a method.
+        :return: None
+        """
+        subscribe = att.SubscriberData(self.connection)
+        subscribe.callback = self._on_command_received
+        subscribe.id = self.getTopics()
+        subscribe.level = 'command'
+        subscribe.direction = 'out'
+        self.connection.subscribeAdv(subscribe)
+        self._on_actuate = value
+
+    def _on_command_received(self, value):
+        """
+        called when an actuator command has arrived, will check if there is a callback method attached and pass it along.
+        :param value:
+        :return:
+        """
+        if hasattr(self, "_on_actuate"):
+            self._on_actuate(self, value)
 
     @staticmethod
     def create(connection, device, name, label, description="", profile="string", style="Undefined"):

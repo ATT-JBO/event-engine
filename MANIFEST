@@ -2,10 +2,8 @@
 setup.py
 att_event_engine\__init__.py
 att_event_engine\att.py
-att_event_engine\attiotuserclient.py
 att_event_engine\factory.py
 att_event_engine\iotApplication.py
-att_event_engine\resources (new).py
 att_event_engine\resources.py
 att_event_engine\timer.py
 att_event_engine\when.py
