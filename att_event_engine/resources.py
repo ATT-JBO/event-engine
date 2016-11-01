@@ -103,9 +103,15 @@ class Device(IOTObject):
     def __init__(self, id=None, name=None,  gateway=None, style=None, connection=None):
         super(Device, self).__init__(connection)
         if id:
+            if not isinstance(id, basestring):
+                raise Exception("id has to be a string")
             self._id = id
         elif gateway and name:
+            if not isinstance(gateway, basestring) and not isinstance(gateway, Gateway):
+                raise Exception("gateway has to be a string or Gateway object")
             self._gateway = gateway
+            if not isinstance(name, basestring):
+                raise Exception("name has to be a string")
             self._name = name
         else:
             raise LookupError("either id or gateway and name have to be specified")
@@ -152,6 +158,8 @@ class Gateway(IOTObject):
     def __init__(self, id, connection=None):
         super(Gateway, self).__init__(connection)
         if id:
+            if not isinstance(id, basestring):
+                raise Exception("id has to be a string")
             self._id = id
         self._definition = None
 
@@ -165,14 +173,22 @@ class Asset(IOTObject):
     def __init__(self, id=None, gateway=None, device=None, name=None, definition=None, connection=None):
         super(Asset, self).__init__(connection)
         if id:
+            if not isinstance(id, basestring):
+                raise Exception("id has to be a string")
             self._id = id
             self._gateway = None
             self._device = None
             self._name = None
         elif device and name:
             self._id = None
+            if gateway and (not isinstance(gateway, basestring) and not isinstance(gateway, Gateway)):
+                raise Exception("gateway has to be a string or Gateway object")
             self._gateway = gateway
+            if device and (not isinstance(device, basestring) and not isinstance(device, Device)):
+                raise Exception("device has to be a string or Gateway object")
             self._device = device
+            if not isinstance(name, basestring):
+                raise Exception("name has to be a string")
             self._name = name
         elif definition:
             self._definition = definition
