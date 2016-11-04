@@ -279,10 +279,12 @@ class Asset(IOTObject):
             self._getDefinition()
         if not self._id in valueStore:
             val = self.connection.getAssetState(self.id)
+            if val and "Value" in val:                  # bugfix: we sometimes get with capitals, sometimes without. move everything to small capitals.
+                val['value'] = val['Value']
             valueStore[self._id] = val
         else:
             val = valueStore[self._id]
-        return val['Value'] if val else None
+        return val['value'] if val else None
 
 
     @value.setter
