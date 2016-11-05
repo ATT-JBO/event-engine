@@ -14,7 +14,7 @@ from socket import error as SocketError         # for http error handling
 import errno
 import datetime
 import paho.mqtt.client as mqtt
-import types as types                          # to check on type info
+import urllib                                   # used to prepare the timer name so it can be safely used in the broker topic
 
 
 class HttpClient(object):
@@ -386,7 +386,8 @@ class SubscriberData(object):
                 return "client{0}{1}{0}{2}{0}asset{0}{3}{0}{4}".format(divider, self.connection._clientId,self.direction,self.id, self.toMonitor)
                 #return str("client/" + _clientId + "/" + self.direction + "/asset/" + self.id + "/" + self.toMonitor)  # asset is usually a unicode string, mqtt trips over this.
         elif self.level == 'timer':
-            return "{1}{0}timer{0}{2}".format(divider, self.id['context'], self.id['name'])
+            name = self.id['name'].replace(" ", "").replace("_", "").replace("-", "")
+            return "{1}{0}{2}{0}timer".format(divider, self.id['context'], name)
         elif self.level == "device":
             if 'gateway' in self.id:
                 return "client{0}{1}{0}{2}{0}gateway{0}{3}{0}device{0}{4}{0}{5}".format(divider, self.connection._clientId, self.direction, getId('gateway'), getId('device'), self.toMonitor)

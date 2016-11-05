@@ -17,6 +17,8 @@ import att
 class Timer(object):
     """provides access to a global cloud based timer iot-service"""
 
+    TimerEndPoint = "attrdprod.westeurope.cloudapp.azure.com:3000"
+
     def __init__(self, context, name, connection=None):
         """
         Create a new timer object
@@ -55,7 +57,7 @@ class Timer(object):
     def getTopicStr(self):
         """renders 1 or more topic strings for the current object. Always returns a list"""
         result = []
-        monitor = att.SubscriberData(self.context.context)
+        monitor = att.SubscriberData(self.context.connection)
         monitor.level = 'timer'
         for topic in self.getTopics(divider='.', wildcard='*'):
             monitor.id = topic
@@ -79,7 +81,7 @@ class Timer(object):
                 content = json.dumps(content)
                 print("HTTP " + method + ': ' + url)
                 print("HTTP BODY: " + content)
-                _httpClient = httplib.HTTPConnection("localhost:2000")
+                _httpClient = httplib.HTTPConnection(Timer.TimerEndPoint)
                 _httpClient.request(method, url, content)
                 response = _httpClient.getresponse()
                 print(str((response.status, response.reason)))
