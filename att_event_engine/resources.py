@@ -305,7 +305,12 @@ class Asset(IOTObject):
             valueStore[self._id] = val
         else:
             val = valueStore[self._id]
-        return val['at'] if val else None
+        if val:
+            if 'at' in val:                     # stupid clous doesn't do capitals consinstenly, need to check and work around this.
+                return val['at']
+            elif 'At' in val:
+                return val['At']
+        return None
 
     def _setValue(self, value):
         raise Exception("write value only supported on actuators")
