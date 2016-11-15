@@ -1,9 +1,9 @@
-#from setuptools import *
-from distutils.core import setup
+from setuptools import *
+#from distutils.core import setup
 
 setup(
     name='att_event_engine',
-    version='0.8.4',
+    version='0.9.0',
     packages=['att_event_engine'],
     install_requires='paho-mqtt',
     url='',

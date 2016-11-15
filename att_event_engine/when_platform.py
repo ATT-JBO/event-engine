@@ -56,7 +56,16 @@ class MonitorObj(att.SubscriberData):
         resources.valueStore = {}                                           # reset the value store for the next run, don't buffer values, they can have changed by the next run.
 
 
-def _registerAssetToMonitor(asset, callbackObj):
+def registerAssetToMonitor(asset, callbackObj):
+    """
+    registers an asset to be monitored. The callback object that contains the actual callback will be called when a message
+    arrives for the asset.
+    Use this function to register class methods.
+    :param asset: An asset object (sensor/actuator/virtual/config)
+    :param callbackObj: a previously created callback object
+    :type callbackObj: CallbackObject
+    :return: None
+    """
     topics = asset.getTopics()
     for topic in topics:
         monitor = MonitorObj(asset.connection)
@@ -85,7 +94,7 @@ def registerMonitor(assets, condition, callback):
         callbackObj = CallbackObject(condition, callback)
         callback._callbackObj = callbackObj
     for asset in assets:
-        _registerAssetToMonitor(asset, callbackObj)
+        registerAssetToMonitor(asset, callbackObj)
 
 
 def appendToMonitorList(callback, toMonitor):
@@ -96,7 +105,7 @@ def appendToMonitorList(callback, toMonitor):
     :return: None
     """
     callbackObj = callback._callbackObj
-    _registerAssetToMonitor(toMonitor, callbackObj)
+    registerAssetToMonitor(toMonitor, callbackObj)
 
 def removeFromMonitorList(callback, toRemove):
     """
