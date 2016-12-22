@@ -34,6 +34,8 @@ class MonitorObj(att.SubscriberData):
         #global trigger
         if isinstance(value, dict) and "Id" in value:                                       # could come from the timer routine, so first check if it's an asset state change (value is json dict with 'id' in there)
             id = value['Id']
+            if "Value" in value:  # bugfix: we sometimes get with capitals, sometimes without. move everything to small capitals.
+                value['value'] = value['Value']
             resources.valueStore[id] = value
             resources.trigger = resources.Asset(id, self.connection)
         elif hasattr(self, 'timer'):
@@ -79,7 +81,7 @@ def registerAssetToMonitor(asset, callbackObj):
             resources._toMonitor[topicStr].callbacks.append(callbackObj)  # we add the callback as a tupple with the condition, saves us a class decleration.
         else:
             monitor.callbacks.append(callbackObj)
-            asset.connection.addMessageCallback(topicStr, monitor)
+            asset.connection.addMessageCallback(topicStr, monitor.onAssetValueChanged)
             resources._toMonitor[topicStr] = monitor
 
 def registerMonitor(assets, condition, callback):

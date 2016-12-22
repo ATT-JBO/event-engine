@@ -2,3 +2,4 @@
 bin/
 build/
 dist/
+att_event_engine.egg-info/

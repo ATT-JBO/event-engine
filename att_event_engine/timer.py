@@ -69,7 +69,7 @@ class Timer(object):
         start the timer and let it go off in 'value' amount of seconds.
         If the timer was already running, it will be restarted.
         :param delay:
-        :return:
+        :return: True upon success, false otherwise. Raises exception upon serious problems.
         """
         success = False
         badStatusLineCount = 0  # keep track of the amount of 'badStatusLine' exceptions we received. If too many raise to caller, otherwise retry.
@@ -95,6 +95,7 @@ class Timer(object):
             except (SocketError) as e:
                 if e.errno != errno.ECONNRESET:  # if it's error 104 (connection reset), then we try to resend it, cause we just reconnected
                     raise
+        return success
 
     @property
     def id(self):

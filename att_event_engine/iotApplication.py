@@ -12,14 +12,14 @@ import sys
 
 class IotApplication:
     """provides the main entry point for an Iot application"""
-    def __init__(self, username, pwd, api, broker):
+    def __init__(self, username, pwd, api, broker, appName):
         """setup app
         Must be done before any rule is declared.
         """
 
         self.att = att.Client()
         resources.defaultconnection = self.att
-        self.att.connect(username, pwd, True, api, broker)  # important: do before declaring the rules, otherwise the topics to monitor are not rendered correcly.
+        self.att.connect(username, pwd, True, api, broker, client=appName)  # important: do before declaring the rules, otherwise the topics to monitor are not rendered correcly.
 
         for arg in sys.argv[1:]:
             parts = arg.split('=')

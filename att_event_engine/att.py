@@ -15,6 +15,7 @@ import errno
 import datetime
 import paho.mqtt.client as mqtt
 import urllib                                   # used to prepare the timer name so it can be safely used in the broker topic
+import types as types                          # to check on type info
 
 
 class HttpClient(object):
@@ -33,6 +34,7 @@ class HttpClient(object):
         self._refresh_token = None
         self._expires_in = None
         self._clientId = None
+        self._client_name = None
 
 
     def connect_api(self, username, pwd, apiServer="api.smartliving.io", **kwargs):
@@ -46,13 +48,17 @@ class HttpClient(object):
         """
         self._curHttpServer = apiServer
         self._httpClient = httplib.HTTPConnection(apiServer)
+        if 'client' in kwargs:
+            self._client_name = kwargs['client']
+        else:
+            self._client_name = 'maker'
         loginRes = self._login(username, pwd)
         self.extractHttpCredentials(loginRes)
         return loginRes
 
     def _login(self, username, pwd):
         url = "/login"
-        body = "grant_type=password&username=" + username + "&password=" + pwd + "&client_id=maker"
+        body = "grant_type=password&username=" + username + "&password=" + pwd + "&client_id=" + self._client_name
         logging.info("HTTP POST: " + url)
         logging.info("HTTP BODY: " + body)
         self._httpClient.request("POST", url, body, {"Content-type": "application/json"})
@@ -81,7 +87,7 @@ class HttpClient(object):
     def _refreshToken(self):
         """no need for error handling, is called within doHTTPRequest, which does the error handling"""
         url = "/login"
-        body = "grant_type=refresh_token&refresh_token=" + self._refresh_token + "&client_id=dashboard"
+        body = "grant_type=refresh_token&refresh_token=" + self._refresh_token + "&client_id=" + self._client_name
         logging.info("HTTP POST: " + url)
         logging.info("HTTP BODY: " + body)
         self._httpClient.request("POST", url, body, {"Content-type": "application/json"})
@@ -112,6 +118,27 @@ class HttpClient(object):
             raise Exception(
                 "either assetId, (deviceId and asset name) or (gatewayid, deviceName and name) have to be specified")
         return self.doHTTPRequest(url, "")
+
+    def get_history(self, id, fromTime=None, toTime=None, page=None):
+        """
+        gets historical, raw data for the specified asset id.
+        :param id: The id of the asset
+        :param fromTime: the start time of the data (if none, from start)
+        :param toTime: the end time of the data (if none, to end)
+        :param page: page number to retrieve (if none, first page)
+        :return: a list of data values
+        """
+        url = '/asset/{}/states'.format(id)
+        params = {}
+        if fromTime:
+            params["from"] = fromTime
+        if toTime:
+            params["to"] = toTime
+        if page:
+            params["page"] = page
+        if len(url) > 0:
+            url += "?" + urllib.urlencode(params)
+        return self.doHTTPRequest(url, "", 'GET')
 
     def createAsset(self, device, name, label, description, assetIs, assetType, style="Undefined"):
         '''Create or update the specified asset. Call this function after calling 'connect' for each asset that you want to use.
@@ -238,9 +265,18 @@ class HttpClient(object):
             Some multi threading applications can have issues with the server closing the connection, if this happens
             we try again
         """
+
+        def processUnauthorized(badStatusLineCount):
+            badStatusLineCount += 1
+            if badStatusLineCount < 10:  # we need to make certain that we don't get stuck in an endless loop, so only try to reconnect a couple of times.
+                self._refreshToken()
+                return badStatusLineCount
+            else:
+                raise
+
         if self._isLoggedIn:
-            success = False
             badStatusLineCount = 0  # keep track of the amount of 'badStatusLine' exceptions we received. If too many raise to caller, otherwise retry.
+            success = False
             while not success:
                 try:
                     if self._expires_in < time.time():  # need to refesh the token first
@@ -259,8 +295,12 @@ class HttpClient(object):
                             return json.loads(jsonStr)
                         else:
                             return  # get out of the ethernal loop
+                    elif response.status == 401:
+                        badStatusLineCount = processUnauthorized(badStatusLineCount)
                     else:
                         self._processError(jsonStr)
+                except httplib.UNAUTHORIZED:
+                    badStatusLineCount = processUnauthorized(badStatusLineCount)
                 except httplib.BadStatusLine:  # a bad status line is probably due to the connection being closed. If it persists, raise the exception.
                     badStatusLineCount += 1
                     if badStatusLineCount < 10:
@@ -316,14 +356,13 @@ class HttpClient(object):
         if str:
             try:
                 obj = json.loads(str)
-                if obj:
-                    if 'error_description' in obj:
-                        raise Exception(obj['error_description'])
-                    elif 'message' in obj:
-                        raise Exception(obj['message'])
             except:
-                logging.exception("failed to extract error message")
-        raise Exception(str)
+                raise Exception(str)
+            if obj:
+                if 'error_description' in obj:
+                    raise Exception(obj['error_description'])
+                elif 'message' in obj:
+                    raise Exception(obj['message'])
 
 
 class SubscriberData(object):
@@ -387,7 +426,10 @@ class SubscriberData(object):
                 #return str("client/" + _clientId + "/" + self.direction + "/asset/" + self.id + "/" + self.toMonitor)  # asset is usually a unicode string, mqtt trips over this.
         elif self.level == 'timer':
             name = self.id['name'].replace(" ", "").replace("_", "").replace("-", "")
-            return "{1}{0}{2}{0}timer".format(divider, self.id['context'], name)
+            if 'context' in self.id:
+                return "{1}{0}{2}{0}timer".format(divider, self.id['context'], name)
+            else:
+                return "{1}{0}timer".format(divider, name)
         elif self.level == "device":
             if 'gateway' in self.id:
                 return "client{0}{1}{0}{2}{0}gateway{0}{3}{0}device{0}{4}{0}{5}".format(divider, self.connection._clientId, self.direction, getId('gateway'), getId('device'), self.toMonitor)
@@ -417,12 +459,12 @@ class Client(HttpClient):
         self._broker = None
         self._blocking = True
 
-    def connect(self, username, pwd, blocking=False, apiServer="api.smartliving.io", broker="broker.smartliving.io"):
+    def connect(self, username, pwd, blocking=False, apiServer="api.smartliving.io", broker="broker.smartliving.io", **kwargs):
         '''start the mqtt client and make certain that it can receive data from the IOT platform
     	   mqttServer: (optional): the address of the mqtt server. Only supply this value if you want to a none standard server.
     	   port: (optional) the port number to communicate on with the mqtt server.
         '''
-        mqttCredentials = self.connect_api(username, pwd, apiServer)
+        mqttCredentials = self.connect_api(username, pwd, apiServer, **kwargs)
         if not "rmq:clientId" in mqttCredentials:
             logging.error("username not specified, can't connect to broker")
             raise Exception("username not specified, can't connect to broker")
@@ -464,6 +506,14 @@ class Client(HttpClient):
         if self._httpClient:
             self._httpClient.close()
         self._httpClient = None
+
+    @property
+    def is_connected_mqtt(self):
+        """
+        True when mqtt is connected.
+        :return: boolean
+        """
+        return self._mqttConnected
 
     def connect_broker(self, username, pwd, broker="broker.smartliving.io", blocking=True):
         """
@@ -511,7 +561,7 @@ class Client(HttpClient):
                         userdata._subscribe(topic)
                         for definition in definitions:
                             # note: if definition.id is a string, then it points to a single asset, otherwise it's a path, that we can't
-                            if isinstance(definition.id,
+                            if hasattr(definition, 'id') and isinstance(definition.id,
                                           basestring) and definition.level == 'asset' and definition.direction == 'in' and definition.toMonitor == 'state':  # refresh the state of all assets being monitored when reconnecting. Other events can't be refreshed.
                                 curVal = userdata.getAssetState(definition.id)
                                 if curVal:
@@ -527,7 +577,6 @@ class Client(HttpClient):
         try:
             if msg.topic in userdata._callbacks:
                 topicParts = msg.topic.split('/')
-                logging.info(str(topicParts))
                 if topicParts[2] == 'in':  # data from cloud to client is always json, from device to cloud is not garanteed to be json.
                     #todo: remove temp fix for inconsistent data transmission (right now, not all data arrives with the same capitalization)
                     payload = msg.payload.replace('"At"', '"at"').replace('"Value"', '"value"')
@@ -551,8 +600,8 @@ class Client(HttpClient):
         """monitor for changes for that asset. For more monitor features, use 'subscribeAdv'
         :type callback: function, format: callback(json_object)
         :param callback: a function that will be called when a value arrives for the specified asset.
-        :type asset: string
-        :param asset: the id of the assset to monitor
+        :type asset: dict
+        :param asset: a path to an asset. The path can contain gateway, device, asset
         """
         data = SubscriberData(self)
         data.id = asset
@@ -579,14 +628,20 @@ class Client(HttpClient):
         if self._mqttClient and self._mqttConnected == True:
             self._subscribe(topic)
 
-    def addMessageCallback(self, topic, monitor):
+    def addMessageCallback(self, topic, callback):
+        """
+        add a callback for the specified topic.
+        :param topic: a string with the topic to subscribe to.
+        :param monitor:  a function of format: def xxx(self, json_object) or def xxx(json_object)
+        :return: None, raise Exception
+        """
         if self._mqttConnected:
             self._subscribe(topic)
         if topic in self._callbacks:
             raise Exception("topic already registered")
         else:
-            self._callbacks[topic] = [monitor]
-        self._mqttClient.message_callback_add(topic, lambda client, userdata, msg: monitor.onAssetValueChanged(json.loads(msg.payload)))
+            self._callbacks[topic] = [callback]
+        self._mqttClient.message_callback_add(topic, lambda client, userdata, msg: callback(json.loads(msg.payload)))
 
     def removeMessageCallback(self, topic):
         self._unsubscribe(topic)
@@ -658,3 +713,29 @@ class Client(HttpClient):
     #        topic += "/asset/" + str(id) + "/command"
     #    logging.info("Publishing message - topic: " + topic + ", payload: " + toSend)
     #    self._mqttClient.publish(topic, toSend, 0, False)
+
+
+    def send_command_mqtt(self, id, value, device=None, gateway=None):
+            """
+            temp solution, for when we need mqtt to send commands (ping)
+            :param id:
+            :param value:
+            :param device:
+            :param gateway:
+            :return:
+            """
+            typeOfVal = type(value)
+            if typeOfVal in [types.IntType, types.BooleanType, types.FloatType, types.LongType,
+                             types.StringType]:  # if it's a basic type: send as csv, otherwise as json.
+                toSend = str(value)
+            else:
+                toSend = json.dumps(value)
+            topic = "client/" + self._clientId + "/in"
+            if gateway:
+                topic += "/gateway/" + gateway
+            if device != None:
+                topic += "/device/" + device + "/asset/" + str(id) + "/command"  # also need a topic to publish to
+            else:
+                topic += "/asset/" + str(id) + "/command"
+            logging.info("Publishing message - topic: " + topic + ", payload: " + toSend)
+            self._mqttClient.publish(topic, toSend, 0, False)
