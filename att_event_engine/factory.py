@@ -8,7 +8,9 @@ __status__ = "Prototype"  # "Development", or "Production"
 import resources
 
 class Asset(object):
-    """"""
+    """
+	The base class for factory objects that represent assets (sensors, actuators, virtuals, configs)
+	"""
 
     def __init__(self, connection=None, id=None, name=None, device=None, gateway=None, style=None):
         self._ids = id

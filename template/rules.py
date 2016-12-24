@@ -11,5 +11,5 @@ battery = factory.Sensor(name="battery")
 
 @When([battery], lambda: battery.current.value < 20)
 def battery_low():
-    battery.context.pushNotification("battery is low")
+    battery.connection.pushNotification("battery is low")
 

@@ -82,6 +82,7 @@ class IOTObject(object):
 
     @property
     def id(self):
+        """get the name of the item"""
         if not self._id:
             definition = self._getDefinition()
             if definition:
@@ -90,6 +91,7 @@ class IOTObject(object):
 
     @property
     def name(self):
+        """get the name of the item"""
         if not self._name:
             definition = self._getDefinition()
             if definition:
