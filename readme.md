@@ -59,4 +59,4 @@ Note: the decorator doesn't work on class methods. Use the function when_platfor
 The library itself is fairly stable, but not all functionality is supported yet by the AllThingsTalk platform, so it's occationally still required to work around issues. This is mostly the case for referencing devices as stand-alone while they are actually attached to gateways. For this reason, this library is still very much an alpha release.  
 
 ## api reference
-This [doc set](\doc\index.md) has been generated from the source code. 
+This [doc set](/doc/index.md) has been generated from the source code. 
