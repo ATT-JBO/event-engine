@@ -35,6 +35,8 @@ class HttpClient(object):
         self._expires_in = None
         self._clientId = None
         self._client_name = None
+        self._user = None
+        self._pwd = None
 
 
     def connect_api(self, username, pwd, apiServer="api.smartliving.io", **kwargs):
@@ -52,13 +54,15 @@ class HttpClient(object):
             self._client_name = kwargs['client']
         else:
             self._client_name = 'maker'
-        loginRes = self._login(username, pwd)
+        self._user = username
+        self._pwd = pwd
+        loginRes = self._login_api()
         self.extractHttpCredentials(loginRes)
         return loginRes
 
-    def _login(self, username, pwd):
+    def _login_api(self):
         url = "/login"
-        body = "grant_type=password&username=" + username + "&password=" + pwd + "&client_id=" + self._client_name
+        body = "grant_type=password&username=" + self._user + "&password=" + self._pwd + "&client_id=" + self._client_name
         logging.info("HTTP POST: " + url)
         logging.info("HTTP BODY: " + body)
         self._httpClient.request("POST", url, body, {"Content-type": "application/json"})
@@ -86,20 +90,28 @@ class HttpClient(object):
 
     def _refreshToken(self):
         """no need for error handling, is called within doHTTPRequest, which does the error handling"""
-        url = "/login"
-        body = "grant_type=refresh_token&refresh_token=" + self._refresh_token + "&client_id=" + self._client_name
-        logging.info("HTTP POST: " + url)
-        logging.info("HTTP BODY: " + body)
-        self._httpClient.request("POST", url, body, {"Content-type": "application/json"})
-        response = self._httpClient.getresponse()
-        logging.info(str((response.status, response.reason)))
-        jsonStr = response.read()
-        logging.info(jsonStr)
-        if response.status == 200:
-            loginRes = json.loads(jsonStr)
+        if self._refresh_token and self._client_name:
+            url = "/login"
+            body = "grant_type=refresh_token&refresh_token=" + self._refresh_token + "&client_id=" + self._client_name
+            logging.info("HTTP POST: " + url)
+            logging.info("HTTP BODY: " + body)
+            self._httpClient.request("POST", url, body, {"Content-type": "application/json"})
+            response = self._httpClient.getresponse()
+            logging.info(str((response.status, response.reason)))
+            jsonStr = response.read()
+            logging.info(jsonStr)
+            if response.status == 200:
+                login_res = json.loads(jsonStr)
+            else:
+                logging.error("failed to refresh security token, resetting credentials...")
+                logging.error("self._access_token: " + self._access_token)
+                logging.error("self._refresh_token: " + self._refresh_token)
+                logging.error("self._expires_in: " + str(self._expires_in))
+                logging.error("self._clientId: " + self._clientId)
+                login_res =  self._login_api()                          # retry by doing a full log in.
+            self.extractHttpCredentials(login_res)
         else:
-            loginRes = None
-        self.extractHttpCredentials(loginRes)
+            logging.error("can't refresh token: invalid or no refresh token")
 
     def getAsset(self, id=None, gateway=None, device=None, name=None):
         """get the details for the specified asset
@@ -196,6 +208,15 @@ class HttpClient(object):
         if result:
             return result['items']
 
+    def get_user_info(self):
+        """
+        get user info about the currently logged-in user (user-id)
+        :return:
+        """
+        url = "/me"
+        return self.doHTTPRequest(url, "")
+
+
     def getDevices(self, ground):
         """get all the devices related to a ground"""
         url = "/ground/" + ground + "/devices"
@@ -262,9 +283,13 @@ class HttpClient(object):
 
     def doHTTPRequest(self, url, content, method="GET"):
         """send the data and check the result
-            Some multi threading applications can have issues with the server closing the connection, if this happens
-            we try again
+        :param url: the url to do the http request to, ex: /login
+        :param content: the body
+        :param method: GET, PUT, POST, DELETE
+        :return:
         """
+        #Some multi threading applications can have issues with the server closing the connection, if this happens
+        # we try again
 
         def processUnauthorized(badStatusLineCount):
             badStatusLineCount += 1
